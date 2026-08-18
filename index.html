@@ -3,110 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Racing Save System</title>
+    <title>3D Pseudo-Racer & Garage</title>
     <style>
-        body { margin: 0; background: #0a0a0c; color: #fff; font-family: sans-serif; text-align: center; }
-        #view { position: relative; width: 100vw; max-width: 400px; height: 60vh; background: #111; margin: 10px auto; border-radius: 8px; overflow: hidden; }
+        :root { --neon: #00f3ff; --pink: #ff0055; --bg: #0a0a0f; }
+        body { margin: 0; padding: 0; background: var(--bg); color: #fff; font-family: -apple-system, sans-serif; display: flex; flex-direction: column; align-items: center; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; }
+        #wrapper { width: 100vw; max-width: 440px; display: flex; flex-direction: column; height: 100vh; justify-content: space-between; padding: 10px; box-sizing: border-box; }
+        #canvas-container { position: relative; width: 100%; height: 45vh; background: #000; border-radius: 12px; overflow: hidden; border: 2px solid #222; }
         canvas { width: 100%; height: 100%; display: block; }
-        .ui { position: absolute; top: 10px; left: 10px; font-family: monospace; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 4px; text-align: left; }
-        .pads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 400px; margin: 0 auto; padding: 10px; height: 15vh; }
-        .btn { background: #222; border: 2px solid #444; border-radius: 8px; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; }
-        .btn:active { background: #444; }
-        .io { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 400px; margin: 10px auto; }
-        .io-btn { background: #007aff; border: none; padding: 12px; border-radius: 6px; color: #fff; font-weight: bold; position: relative; cursor: pointer; }
-        .io-btn input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; }
+        .hud { position: absolute; top: 12px; left: 12px; font-family: monospace; font-size: 14px; background: rgba(0,0,0,0.75); padding: 8px 12px; border-radius: 6px; border: 1px solid #333; pointer-events: none; line-height: 1.5; }
+        .hud span { color: var(--neon); font-weight: bold; }
+        .panel { background: #14161f; padding: 10px; border-radius: 12px; border: 1px solid #2a2d3d; }
+        .garage-title { text-align: center; margin: 0 0 8px 0; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #8a8f9f; }
+        .car-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .car-btn { background: #222530; border: 1px solid #444; border-radius: 6px; color: #aaa; padding: 8px; font-size: 13px; font-weight: bold; cursor: pointer; }
+        .car-btn.active { background: linear-gradient(135deg, #007aff, #004499); color: #fff; border-color: var(--neon); }
+        .controls { display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; height: 22vh; }
+        .drive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .pdl-grid { display: grid; grid-template-rows: 1fr 1fr; gap: 8px; }
+        .ctrl { background: #1c1e24; border: 2px solid #333; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 24px; color: #fff; font-weight: bold; cursor: pointer; }
+        .ctrl:active { background: #333; }
+        .pdl { font-size: 16px; font-weight: bold; background: #252830; }
+        .pdl:active { background: #444; }
+        #pdl-gas:active { background: #34c759; }
+        #pdl-brake:active { background: #ff3b30; }
+        .shifter-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; height: 100%; }
+        .shifter-layout .ctrl { font-size: 16px; background: #1b1d26; }
+        .io-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+        .io-btn { background: #007aff; border: none; padding: 10px; border-radius: 8px; color: #fff; font-weight: bold; font-size: 13px; cursor: pointer; text-align: center; position: relative; }
+        .io-btn input { position: absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer; }
     </style>
 </head>
 <body>
 
-    <div id="view">
-        <canvas id="c"></canvas>
-        <div class="ui">Score: <span id="s">0</span><br>Credits: $<span id="cr">500</span></div>
-    </div>
-
-    <div class="pads">
-        <div class="btn" id="l">◀</div>
-        <div class="btn" id="r">▶</div>
-    </div>
-
-    <div class="io">
-        <button class="io-btn" onclick="saveGame()">📥 Save (.racing)</button>
-        <div class="io-btn" style="background:#34c759;">
-            📤 Load (.racing)
-            <input type="file" accept=".racing" onchange="loadGame(event)">
+<div id="wrapper">
+    <!-- Viewport Screen -->
+    <div id="canvas-container">
+        <canvas id="raceCanvas"></canvas>
+        <div class="hud">
+            Speed: <span id="txt-spd">0</span> km/h<br>
+            RPM: <span id="txt-rpm">1000</span><br>
+            Gear: <span id="txt-gear">1</span><br>
+            Wallet: $<span id="txt-cash">500</span>
         </div>
     </div>
 
+    <!-- Active Management Garage -->
+    <div class="panel">
+        <div class="garage-title">🏎️ Tuning Garage room</div>
+        <div class="car-selector">
+            <button class="car-btn active" id="btn-car0" onclick="selectCar(0)">AM-GT3 (Cyan)</button>
+            <button class="car-btn" id="btn-car1" onclick="selectCar(1)">EV-Concept (Pink)</button>
+        </div>
+        <div class="io-bar">
+            <button class="io-btn" onclick="saveData()">📥 Export (.racing)</button>
+            <div class="io-btn" style="background:#34c759;">
+                📤 Import (.racing)
+                <input type="file" accept=".racing" onchange="loadData(event)">
+            </div>
+        </div>
+    </div>
+
+    <!-- System Mechanics & Driving Input Blocks -->
+    <div class="controls">
+        <div class="drive-grid">
+            <div class="ctrl" id="pdl-left">◀</div>
+            <div class="ctrl" id="pdl-right">▶</div>
+        </div>
+        <div class="pdl-grid">
+            <div class="shifter-layout">
+                <div class="ctrl" id="shift-up">⚙️+</div>
+                <div class="ctrl" id="shift-down">⚙️-</div>
+            </div>
+            <div class="drive-grid">
+                <div class="ctrl pdl" id="pdl-brake">BRAKE</div>
+                <div class="ctrl pdl" id="pdl-gas">GAS</div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-    const canvas = document.getElementById("c");
+    const canvas = document.getElementById("raceCanvas");
     const ctx = canvas.getContext("2d");
-    function res() { canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
-    window.addEventListener('resize', res); res();
 
-    let state = { type: "racingData", credits: 500, score: 0, carX: 0, speed: 4 };
-    let obstacles = [];
-    let inputs = { left: false, right: false };
-    state.carX = canvas.width / 2;
+    function resize() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
 
+    // Vehicles Setup Array
+    const vehicles = [
+        { id: "am_gt3", color: "#00f3ff", maxSpd: 220 },
+        { id: "ev_concept", color: "#ff0055", maxSpd: 290 }
+    ];
+
+    // Global Core Architecture Game State (Synced to Custom File Output)
+    let state = {
+        fileType: "racingData",
+        credits: 500,
+        selectedCarIdx: 0,
+        physics: { speed: 0, rpm: 1000, gear: 1, carX: 0 }
+    };
+
+    let trackY = 0;
+    let inputs = { left: false, right: false, gas: false, brake: false };
+    state.physics.carX = canvas.width / 2;
+
+    // Manual Gearbox Physics Config
+    const gearRatios = [0, 3.5, 2.4, 1.7, 1.2, 0.9]; 
+    const maxRpm = 7500;
+
+    // iPad / Mobile On-Screen Interception Bindings
     function bind(id, prop) {
         const el = document.getElementById(id);
         el.addEventListener("touchstart", (e) => { e.preventDefault(); inputs[prop] = true; });
         el.addEventListener("touchend", (e) => { e.preventDefault(); inputs[prop] = false; });
     }
-    bind("l", "left"); bind("r", "right");
+    bind("pdl-left", "left");
+    bind("pdl-right", "right");
+    bind("pdl-gas", "gas");
+    bind("pdl-brake", "brake");
 
+    // Gear Shifting Listeners
+    document.getElementById("shift-up").addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (state.physics.gear < 5) {
+            state.physics.gear++;
+            state.physics.rpm = Math.max(state.physics.rpm * 0.7, 1200);
+        }
+    });
+    document.getElementById("shift-down").addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        if (state.physics.gear > 1) {
+            state.physics.gear--;
+            state.physics.rpm = Math.min(state.physics.rpm * 1.3, maxRpm);
+        }
+    });
+
+    function selectCar(idx) {
+        state.selectedCarIdx = idx;
+        document.getElementById("btn-car0").classList.toggle("active", idx === 0);
+        document.getElementById("btn-car1").classList.toggle("active", idx === 1);
+    }
+
+    // Pseudo-3D Graphics Engine Simulation Loop
     function loop() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#1a1a24"; ctx.fillRect(40, 0, canvas.width - 80, canvas.height);
+        
+        let horizon = canvas.height * 0.45;
+        let activeCar = vehicles[state.selectedCarIdx];
 
-        if (inputs.left) state.carX = Math.max(state.carX - 5, 50);
-        if (inputs.right) state.carX = Math.min(state.carX + 5, canvas.width - 80);
+        // 1. Draw Horizon Sky and Ground Elements
+        ctx.fillStyle = "#07070d"; ctx.fillRect(0, 0, canvas.width, horizon);
+        ctx.fillStyle = "#111217"; ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
 
-        state.score += 1;
-        if (Math.random() < 0.02 && obstacles.length < 2) {
-            obstacles.push({ x: Math.random() * (canvas.width - 120) + 50, y: -40 });
+        // 2. Linear Engine RPM & Speed Calculations
+        let targetRatio = gearRatios[state.physics.gear];
+        if (inputs.gas) {
+            state.physics.rpm += (160 / targetRatio);
+            if (state.physics.rpm > maxRpm) state.physics.rpm = maxRpm;
+            
+            let optimalSpeed = (state.physics.rpm / maxRpm) * activeCar.maxSpd;
+            state.physics.speed += (optimalSpeed - state.physics.speed) * 0.05;
+        } else if (inputs.brake) {
+            state.physics.speed = Math.max(state.physics.speed - 4, 0);
+            state.physics.rpm = Math.max(state.physics.rpm - 180, 1000);
+        } else {
+            state.physics.speed = Math.max(state.physics.speed - 0.8, 0);
+            state.physics.rpm = Math.max(state.physics.rpm - 40, 1000);
         }
 
-        obstacles.forEach((obs, idx) => {
-            obs.y += state.speed;
-            ctx.fillStyle = "#ffcc00"; ctx.fillRect(obs.x, obs.y, 30, 40);
+        // Steer Tracking
+        if (inputs.left) state.physics.carX = Math.max(state.physics.carX - 4, 60);
+        if (inputs.right) state.physics.carX = Math.min(state.physics.carX + 4, canvas.width - 90);
 
-            if (obs.x < state.carX + 30 && obs.x + 30 > state.carX && obs.y < canvas.height - 80 + 40 && obs.y + 40 > canvas.height - 80) {
-                state.score = Math.max(state.score - 100, 0);
-                obstacles.splice(idx, 1);
-            }
-            if (obs.y > canvas.height) { obstacles.splice(idx, 1); state.credits += 10; }
-        });
+        // 3. Render 3D Perspective Pseudo-Road Lines
+        trackY += (state.physics.speed * 0.1);
+        if (trackY > 40) trackY = 0;
 
-        ctx.fillStyle = "#00f3ff"; ctx.fillRect(state.carX, canvas.height - 80, 30, 50);
-        document.getElementById("s").innerText = state.score;
-        document.getElementById("cr").innerText = state.credits;
+        ctx.fillStyle = "#1e212b";
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2 - 20, horizon);
+        ctx.lineTo(canvas.width / 2 + 20, horizon);
+        ctx.lineTo(canvas.width - 30, canvas.height);
+        ctx.lineTo(30, canvas.height);
+        ctx.fill();
+
+        // Moving Perspective Segments
+        for (let i = 0; i < 8; i++) {
+            let lineY = horizon + ((canvas.height - horizon) * ((i * 20 + trackY) % 160) / 160);
+            let w = (lineY - horizon) * 0.1;
+            ctx.fillStyle = varColor = (Math.floor((i + Math.floor(trackY/20)) % 2) === 0) ? varColor = "#ff0055" : "#fff";
+            ctx.fillRect(canvas.width / 2 - w/2, lineY, w, 3);
+        }
+
+        // 4. Render Active Player Chassis Box
+        ctx.fillStyle = activeCar.color;
+        ctx.fillRect(state.physics.carX, canvas.height - 75, 34, 45);
+        ctx.fillStyle = "#111"; // Wheels
+        ctx.fillRect(state.physics.carX - 4, canvas.height - 65, 4, 12);
+        ctx.fillRect(state.physics.carX + 34, canvas.height - 65, 4, 12);
+        ctx.fillStyle = "#000"; // Windshield
+                ctx.fillRect(state.physics.carX + 4, canvas.height - 68, 26, 8);
+
+        // Score generation from movement velocity
+        if (state.physics.speed > 10 && Math.random() < 0.01) {
+            state.credits += 5;
+        }
+
+        // 5. Update Head-Up UI
+        document.getElementById("txt-spd").innerText = Math.floor(state.physics.speed);
+        document.getElementById("txt-rpm").innerText = Math.floor(state.physics.rpm);
+        document.getElementById("txt-gear").innerText = state.physics.gear;
+        document.getElementById("txt-cash").innerText = state.credits;
+
         requestAnimationFrame(loop);
     }
 
-    function saveGame() {
-        const blob = new Blob([JSON.stringify(state)], { type: "application/json" });
+    // IO Custom Extension Processing Scripts
+    function saveData() {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `save_${state.score}.racing`;
+        a.download = "driver_profile.racing"; // Fixed missing quotation marks here
         a.click();
     }
 
-    function loadGame(e) {
-        const file = e.target.files[0];
+    function loadData(e) {
+        const file = e.target.files[0]; // Fixed missing index selection here
         if (!file) return;
-        const r = new FileReader();
-        r.onload = function(evt) {
-            const p = JSON.parse(evt.target.result);
-            if (p.type === "racingData") {
-                state = p;
-                obstacles = [];
-                alert("Game Loaded!");
+        
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const parsed = JSON.parse(evt.target.result);
+                if (parsed.fileType === "racingData") {
+                    state = parsed;
+                    selectCar(state.selectedCarIdx);
+                    alert("Profile Signature Restored Successfully!");
+                } else {
+                    alert("Invalid game configuration architecture.");
+                }
+            } catch (err) {
+                alert("File trace corrupted or incomplete.");
             }
         };
-        r.readAsText(file);
+        reader.readAsText(file);
     }
+
     loop();
-</script>
-</body>
-</html>
+
+        
