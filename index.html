@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Racing Save System</title>
+    <style>
+        body { margin: 0; background: #0a0a0c; color: #fff; font-family: sans-serif; text-align: center; }
+        #view { position: relative; width: 100vw; max-width: 400px; height: 60vh; background: #111; margin: 10px auto; border-radius: 8px; overflow: hidden; }
+        canvas { width: 100%; height: 100%; display: block; }
+        .ui { position: absolute; top: 10px; left: 10px; font-family: monospace; background: rgba(0,0,0,0.7); padding: 8px; border-radius: 4px; text-align: left; }
+        .pads { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 400px; margin: 0 auto; padding: 10px; height: 15vh; }
+        .btn { background: #222; border: 2px solid #444; border-radius: 8px; color: #fff; font-size: 24px; display: flex; align-items: center; justify-content: center; }
+        .btn:active { background: #444; }
+        .io { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-width: 400px; margin: 10px auto; }
+        .io-btn { background: #007aff; border: none; padding: 12px; border-radius: 6px; color: #fff; font-weight: bold; position: relative; cursor: pointer; }
+        .io-btn input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; }
+    </style>
+</head>
+<body>
+
+    <div id="view">
+        <canvas id="c"></canvas>
+        <div class="ui">Score: <span id="s">0</span><br>Credits: $<span id="cr">500</span></div>
+    </div>
+
+    <div class="pads">
+        <div class="btn" id="l">◀</div>
+        <div class="btn" id="r">▶</div>
+    </div>
+
+    <div class="io">
+        <button class="io-btn" onclick="saveGame()">📥 Save (.racing)</button>
+        <div class="io-btn" style="background:#34c759;">
+            📤 Load (.racing)
+            <input type="file" accept=".racing" onchange="loadGame(event)">
+        </div>
+    </div>
+
+<script>
+    const canvas = document.getElementById("c");
+    const ctx = canvas.getContext("2d");
+    function res() { canvas.width = canvas.clientWidth; canvas.height = canvas.clientHeight; }
+    window.addEventListener('resize', res); res();
+
+    let state = { type: "racingData", credits: 500, score: 0, carX: 0, speed: 4 };
+    let obstacles = [];
+    let inputs = { left: false, right: false };
+    state.carX = canvas.width / 2;
+
+    function bind(id, prop) {
+        const el = document.getElementById(id);
+        el.addEventListener("touchstart", (e) => { e.preventDefault(); inputs[prop] = true; });
+        el.addEventListener("touchend", (e) => { e.preventDefault(); inputs[prop] = false; });
+    }
+    bind("l", "left"); bind("r", "right");
+
+    function loop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#1a1a24"; ctx.fillRect(40, 0, canvas.width - 80, canvas.height);
+
+        if (inputs.left) state.carX = Math.max(state.carX - 5, 50);
+        if (inputs.right) state.carX = Math.min(state.carX + 5, canvas.width - 80);
+
+        state.score += 1;
+        if (Math.random() < 0.02 && obstacles.length < 2) {
+            obstacles.push({ x: Math.random() * (canvas.width - 120) + 50, y: -40 });
+        }
+
+        obstacles.forEach((obs, idx) => {
+            obs.y += state.speed;
+            ctx.fillStyle = "#ffcc00"; ctx.fillRect(obs.x, obs.y, 30, 40);
+
+            if (obs.x < state.carX + 30 && obs.x + 30 > state.carX && obs.y < canvas.height - 80 + 40 && obs.y + 40 > canvas.height - 80) {
+                state.score = Math.max(state.score - 100, 0);
+                obstacles.splice(idx, 1);
+            }
+            if (obs.y > canvas.height) { obstacles.splice(idx, 1); state.credits += 10; }
+        });
+
+        ctx.fillStyle = "#00f3ff"; ctx.fillRect(state.carX, canvas.height - 80, 30, 50);
+        document.getElementById("s").innerText = state.score;
+        document.getElementById("cr").innerText = state.credits;
+        requestAnimationFrame(loop);
+    }
+
+    function saveGame() {
+        const blob = new Blob([JSON.stringify(state)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `save_${state.score}.racing`;
+        a.click();
+    }
+
+    function loadGame(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const r = new FileReader();
+        r.onload = function(evt) {
+            const p = JSON.parse(evt.target.result);
+            if (p.type === "racingData") {
+                state = p;
+                obstacles = [];
+                alert("Game Loaded!");
+            }
+        };
+        r.readAsText(file);
+    }
+    loop();
+</script>
+</body>
+</html>
